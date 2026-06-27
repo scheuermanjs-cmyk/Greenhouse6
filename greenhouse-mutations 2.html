@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Greenhouse: Mutations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#6E4A2C;
+    --panel:#1A2B1D;
+    --panel-2:#223A26;
+    --outline:#0A120C;
+    --pot:#B5764A;
+    --pot-light:#D98B55;
+    --pot-dark:#7A431F;
+    --accent:#7ED957;
+    --accent-dark:#3F8C2A;
+    --violet:#C77DFF;
+    --warn:#FFC857;
+    --danger:#FF5C5C;
+    --text:#EAF2E2;
+    --text-muted:#8FA68C;
+    --parchment:#EBD9A8;
+    --parchment-ink:#3B2E1E;
+    --parchment-line:#8C6A3E;
+    --hill:#16261A;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--text); font-family:'VT323',monospace; }
+  body{
+    min-height:100vh;
+    padding-top:env(safe-area-inset-top);
+    padding-bottom:env(safe-area-inset-bottom);
+    background-image:
+      repeating-linear-gradient(to bottom, rgba(0,0,0,.08) 0px 1px, transparent 1px 6px),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 96'%3E%3Crect x='0' y='0' width='192' height='2' fill='rgb(140,98,56)'/%3E%3Crect x='0' y='2' width='92' height='46' fill='rgb(124,84,48)'/%3E%3Crect x='92' y='2' width='4' height='46' fill='rgb(58,36,18)'/%3E%3Crect x='96' y='2' width='92' height='46' fill='rgb(110,70,36)'/%3E%3Crect x='188' y='2' width='4' height='46' fill='rgb(58,36,18)'/%3E%3Crect x='0' y='48' width='192' height='2' fill='rgb(140,98,56)'/%3E%3Crect x='0' y='50' width='44' height='46' fill='rgb(104,66,34)'/%3E%3Crect x='44' y='50' width='4' height='46' fill='rgb(58,36,18)'/%3E%3Crect x='48' y='50' width='92' height='46' fill='rgb(118,80,46)'/%3E%3Crect x='140' y='50' width='4' height='46' fill='rgb(58,36,18)'/%3E%3Crect x='144' y='50' width='48' height='46' fill='rgb(104,66,34)'/%3E%3C/svg%3E");
+    background-size: auto, 192px 96px;
+  }
+  h1,h2,h3{ margin:0; font-family:'Press Start 2P',monospace; font-weight:400; }
+  h3{ text-transform:uppercase; font-size:12px; letter-spacing:.5px; }
+  button{ border:none; cursor:pointer; }
+  p{ margin:0; }
+  ::selection{ background:var(--accent); color:#0F1A12; }
+
+  /* ---------- header ---------- */
+  header{
+    position:sticky; top:0; z-index:10;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 16px; padding-top:calc(14px + env(safe-area-inset-top));
+    background:var(--bg);
+    border-bottom:4px solid var(--outline);
+  }
+  .brand{ display:flex; align-items:center; gap:8px; }
+  .brand h1{ font-size:14px; color:var(--text); line-height:1.3; }
+  .spore-counter{ display:flex; align-items:center; gap:6px; font-size:19px; background:var(--panel); border:3px solid var(--outline); padding:5px 11px; }
+  .spore-icon{ color:var(--accent); }
+
+  /* ---------- hint banner ---------- */
+  .hint-banner{ display:none; margin:10px 16px 0; padding:9px 13px; background:var(--panel-2); border:3px dashed var(--outline); font-size:15px; color:var(--text-muted); text-align:center; }
+  body.show-hint .hint-banner{ display:block; }
+
+  /* ---------- toast ---------- */
+  #toast{ position:fixed; top:66px; left:50%; transform:translate(-50%,-12px); z-index:30; background:var(--panel-2); border:3px solid var(--outline); color:var(--text); padding:10px 16px; font-size:14px; opacity:0; transition:opacity .3s, transform .3s; pointer-events:none; max-width:88%; text-align:center; box-shadow:3px 3px 0 rgba(0,0,0,.4); }
+  #toast.show{ opacity:1; transform:translate(-50%,0); }
+
+  /* ---------- screens ---------- */
+  main{ padding:14px 16px 100px; }
+  .screen{ display:none; }
+  .screen.active{ display:block; animation:fadeIn .3s ease; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+  .screen-title{ font-size:14px; color:var(--text-muted); margin:2px 2px 12px; text-transform:uppercase; letter-spacing:.5px; }
+
+  /* ---------- window scene ---------- */
+  .window{ position:relative; height:118px; border:4px solid var(--outline); overflow:hidden; box-shadow:3px 3px 0 rgba(0,0,0,.4); }
+  .sky{ position:absolute; inset:0; transition:background 1.5s ease; }
+  .window.is-night .sky{ background:linear-gradient(to bottom, #0A0E1A 0% 40%, #141A30 40% 75%, #1F2A44 75% 100%); }
+  .window.is-dawn .sky{ background:linear-gradient(to bottom, #2B1F45 0% 30%, #C9577A 30% 65%, #FFB072 65% 100%); }
+  .window.is-day .sky{ background:linear-gradient(to bottom, #3A8FD9 0% 45%, #6FB8E8 45% 80%, #BFE6F5 80% 100%); }
+  .window.is-dusk .sky{ background:linear-gradient(to bottom, #2C2150 0% 30%, #D9554F 30% 65%, #FFB15E 65% 100%); }
+  .hills{ position:absolute; left:-4px; right:-4px; bottom:-2px; height:28px; background:var(--hill); clip-path:polygon(0% 65%, 10% 45%, 22% 58%, 35% 32%, 50% 52%, 65% 28%, 80% 48%, 92% 22%, 100% 42%, 100% 100%, 0% 100%); }
+  .clouds{ position:absolute; inset:0; opacity:0; transition:opacity 1.5s ease; }
+  .window.is-day .clouds{ opacity:1; }
+  .window.is-dawn .clouds, .window.is-dusk .clouds{ opacity:.45; }
+  .cloud{ position:absolute; }
+  .cloud span{ position:absolute; background:rgba(255,255,255,.8); }
+  .cloud-a{ top:16%; left:10%; }
+  .cloud-a span:nth-child(1){ width:26px; height:8px; top:4px; left:0; }
+  .cloud-a span:nth-child(2){ width:16px; height:8px; top:0; left:13px; }
+  .cloud-b{ top:26%; left:58%; }
+  .cloud-b span:nth-child(1){ width:22px; height:7px; top:3px; left:0; }
+  .cloud-b span:nth-child(2){ width:14px; height:7px; top:0; left:12px; }
+  @media (prefers-reduced-motion:no-preference){
+    .cloud-a{ animation:cloudDriftA 50s linear infinite; }
+    .cloud-b{ animation:cloudDriftB 64s linear infinite; animation-delay:-18s; }
+  }
+  @keyframes cloudDriftA{ from{ transform:translateX(-50px); } to{ transform:translateX(340px); } }
+  @keyframes cloudDriftB{ from{ transform:translateX(-50px); } to{ transform:translateX(340px); } }
+  .bird{ position:absolute; width:10px; height:6px; top:30%; left:0; }
+  .bird::before, .bird::after{ content:''; position:absolute; width:6px; height:2px; background:var(--outline); top:2px; }
+  .bird::before{ left:0; transform:rotate(22deg); transform-origin:right center; }
+  .bird::after{ right:0; transform:rotate(-22deg); transform-origin:left center; }
+  .window.is-night .bird{ display:none; }
+  @media (prefers-reduced-motion:no-preference){
+    .bird{ animation:birdFly 32s linear infinite; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    .bird{ display:none; }
+  }
+  @keyframes birdFly{
+    0%{ transform:translate(-20px,12px); opacity:0; }
+    4%{ opacity:1; }
+    42%{ transform:translate(330px,-10px); opacity:1; }
+    48%{ opacity:0; }
+    100%{ transform:translate(330px,-10px); opacity:0; }
+  }
+  .firefly{ position:absolute; width:3px; height:3px; border-radius:50%; background:#D9F2A3; box-shadow:0 0 4px 2px rgba(217,242,163,.7); opacity:0; transition:opacity 1.5s ease; }
+  .window.is-night .firefly{ opacity:.85; }
+  .firefly-a{ bottom:24%; left:28%; }
+  .firefly-b{ bottom:30%; left:68%; }
+  @media (prefers-reduced-motion:no-preference){
+    .window.is-night .firefly-a{ animation:fireflyDrift 7s ease-in-out infinite; }
+    .window.is-night .firefly-b{ animation:fireflyDrift 8.5s ease-in-out infinite; animation-delay:-3s; }
+  }
+  @keyframes fireflyDrift{
+    0%,100%{ transform:translate(0,0); opacity:.35; }
+    25%{ transform:translate(13px,-9px); opacity:1; }
+    50%{ transform:translate(4px,-16px); opacity:.5; }
+    75%{ transform:translate(-11px,-6px); opacity:1; }
+  }
+  .stars{ position:absolute; inset:0; opacity:0; transition:opacity 1.5s ease; }
+  .window.is-night .stars{ opacity:1; }
+  .stars span{ position:absolute; width:2px; height:2px; background:#fff; }
+  @media (prefers-reduced-motion:no-preference){
+    .stars span{ animation:twinkle 2.4s ease-in-out infinite; }
+    .stars span:nth-child(2n){ animation-delay:.6s; }
+    .stars span:nth-child(3n){ animation-delay:1.2s; }
+  }
+  @keyframes twinkle{ 0%,100%{opacity:.3;} 50%{opacity:1;} }
+  .celestial{ position:absolute; width:16px; height:16px; border-radius:50%; z-index:2; transition:top 1.5s ease, left 1.5s ease, background 1.5s ease, box-shadow 1.5s ease; }
+  .window.is-night .celestial{ top:16%; left:62%; background:#F4F1E0; box-shadow:0 0 10px 4px rgba(244,241,224,.5); }
+  .window.is-dawn .celestial{ top:58%; left:18%; background:#FFB05C; box-shadow:0 0 14px 6px rgba(255,176,92,.55); }
+  .window.is-day .celestial{ top:13%; left:55%; background:#FFD24C; box-shadow:0 0 16px 6px rgba(255,210,76,.6); }
+  .window.is-dusk .celestial{ top:56%; left:78%; background:#FF7A45; box-shadow:0 0 14px 6px rgba(255,122,69,.55); }
+  .mullion{ position:absolute; background:var(--outline); z-index:3; }
+  .mullion-v{ left:50%; top:0; bottom:0; width:4px; margin-left:-2px; }
+  .mullion-h{ left:0; right:0; top:50%; height:4px; margin-top:-2px; }
+  .ledge{ height:14px; background:linear-gradient(to bottom, var(--pot-light) 0% 35%, var(--pot) 35% 70%, var(--pot-dark) 70% 100%); border:4px solid var(--outline); border-top:none; box-shadow:3px 3px 0 rgba(0,0,0,.4); margin-bottom:16px; }
+
+  /* ---------- plot grid ---------- */
+  .plot-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .plot-tile{
+    aspect-ratio:1/1; position:relative; overflow:hidden;
+    background:var(--panel);
+    border:3px solid var(--outline);
+    box-shadow:3px 3px 0 rgba(0,0,0,.4);
+    display:flex; align-items:center; justify-content:center;
+    animation:tileIn .35s ease both;
+  }
+  .plot-tile:nth-child(1){animation-delay:.02s}.plot-tile:nth-child(2){animation-delay:.06s}.plot-tile:nth-child(3){animation-delay:.10s}
+  .plot-tile:nth-child(4){animation-delay:.14s}.plot-tile:nth-child(5){animation-delay:.18s}.plot-tile:nth-child(6){animation-delay:.22s}
+  .plot-tile:nth-child(7){animation-delay:.26s}.plot-tile:nth-child(8){animation-delay:.30s}.plot-tile:nth-child(9){animation-delay:.34s}
+  @keyframes tileIn{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+  .plot-tile.locked{ background:#162018; }
+  .plot-tile-inner{ position:relative; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4px; }
+
+  .tile-top-badge{ position:absolute; top:4px; left:2px; right:2px; text-align:center; font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.3px; line-height:1.2; pointer-events:none; }
+  .tile-top-badge.is-ready{ color:var(--accent); animation:pulseText 1.3s steps(2) infinite; }
+  .tile-bottom-text{ position:absolute; bottom:4px; left:2px; right:2px; text-align:center; font-size:11px; color:var(--text-muted); pointer-events:none; }
+  .tile-progress{ position:absolute; bottom:5px; left:9px; right:9px; height:5px; background:var(--outline); border:1px solid var(--outline); }
+  .tile-progress-fill{ height:100%; background:repeating-linear-gradient(45deg, var(--accent) 0 3px, var(--accent-dark) 3px 6px); }
+  @keyframes pulseText{ 0%,100%{opacity:1;} 50%{opacity:.4;} }
+
+  /* ---------- pixel pot + plant stack ---------- */
+  .tile-pot-stack{ display:flex; flex-direction:column; align-items:center; }
+  .tile-plant-slot{ display:flex; align-items:flex-end; justify-content:center; height:32px; }
+  .tile-plus-mini{ font-family:'Press Start 2P'; font-size:13px; color:var(--text-muted); }
+  .pot-wrap-lg{ display:flex; justify-content:center; margin-bottom:14px; }
+  .pix-pot{ display:grid; }
+  .pix-pot > div{ width:100%; height:100%; }
+
+  /* ---------- garden gear: sprinkler + garden light ---------- */
+  .tile-accessory-row{ display:flex; align-items:flex-end; justify-content:center; gap:1px; }
+  .tile-accessory-slot{ width:28px; display:flex; align-items:flex-end; justify-content:center; flex-shrink:0; }
+  .pot-accessory-row{ display:flex; align-items:flex-end; justify-content:center; gap:8px; }
+  .pot-accessory-slot{ width:56px; display:flex; align-items:flex-end; justify-content:center; flex-shrink:0; }
+  .tile-gear-wrap{ position:relative; display:inline-block; }
+  .pix-gear{ display:grid; }
+  .pix-gear > div{ width:100%; height:100%; }
+  .droplet{ position:absolute; width:2px; height:2px; background:#9FD8F0; border-radius:50%; opacity:0; top:0; left:50%; }
+  @media (prefers-reduced-motion:no-preference){
+    .droplet-a{ animation:dropletArcA 1.6s ease-in infinite; }
+    .droplet-b{ animation:dropletArcB 1.6s ease-in infinite; animation-delay:.5s; }
+  }
+  @keyframes dropletArcA{ 0%{ transform:translate(0,0); opacity:0; } 15%{ opacity:1; } 50%{ transform:translate(5px,-5px); opacity:1; } 100%{ transform:translate(8px,3px); opacity:0; } }
+  @keyframes dropletArcB{ 0%{ transform:translate(0,0); opacity:0; } 15%{ opacity:1; } 50%{ transform:translate(-5px,-5px); opacity:1; } 100%{ transform:translate(-8px,3px); opacity:0; } }
+
+  /* ---------- pixel sprite (plants) ---------- */
+  .sprite-wrap-sm{ display:flex; align-items:flex-end; justify-content:center; height:46px; }
+  .sprite-wrap-lg{ display:flex; align-items:flex-end; justify-content:center; height:96px; margin:6px auto 0; }
+  .pix-sprite{ display:grid; image-rendering:pixelated; }
+  .pix-sprite > div{ width:100%; height:100%; }
+  .pix-sprite.is-wilt{ transform:rotate(6deg); opacity:.92; }
+  .pix-sprite.is-glow{ filter:drop-shadow(0 0 2px hsla(var(--hue),85%,65%,.6)) drop-shadow(0 0 5px hsla(var(--hue),85%,65%,.35)); }
+  @media (prefers-reduced-motion:no-preference){
+    .pix-sprite.is-glow{ animation:glowPulse 2.2s ease-in-out infinite; }
+    .pix-sprite.is-drift{ animation:gentleSway 4s ease-in-out infinite; }
+  }
+  @keyframes glowPulse{
+    0%,100%{ filter:drop-shadow(0 0 2px hsla(var(--hue),85%,65%,.55)) drop-shadow(0 0 5px hsla(var(--hue),85%,65%,.3)); }
+    50%{ filter:drop-shadow(0 0 4px hsla(var(--hue),90%,70%,1)) drop-shadow(0 0 9px hsla(var(--hue),90%,70%,.6)); }
+  }
+  @keyframes gentleSway{ 0%,100%{ transform:rotate(0deg); } 50%{ transform:rotate(3deg); } }
+
+  /* ---------- bottom nav ---------- */
+  nav{ position:fixed; left:0; right:0; bottom:0; display:flex; background:var(--panel); border-top:4px solid var(--outline); padding:6px 6px; padding-bottom:calc(6px + env(safe-area-inset-bottom)); gap:5px; z-index:10; }
+  .nav-btn{ flex:1; background:transparent; color:var(--text-muted); padding:13px 2px; font-family:'Press Start 2P'; font-size:9px; }
+  .nav-btn.active{ color:var(--accent); box-shadow:inset 0 4px 0 var(--accent); background:var(--panel-2); }
+
+  /* ---------- herbarium ---------- */
+  .herb-card{ display:flex; align-items:center; gap:13px; background:var(--parchment); color:var(--parchment-ink); border:3px solid var(--parchment-line); padding:14px 13px 12px; margin-bottom:16px; box-shadow:3px 3px 0 rgba(0,0,0,.25); position:relative; cursor:pointer; }
+  .herb-card:active{ transform:translate(1px,1px); }
+  .herb-photo{ position:relative; flex-shrink:0; background:var(--panel); border:3px solid var(--outline); padding:4px 5px 2px; display:flex; align-items:center; justify-content:center; }
+  .herb-photo::before{ content:''; position:absolute; top:-7px; left:50%; width:26px; height:11px; background:rgba(255,201,87,.65); border:1px solid rgba(0,0,0,.2); }
+  .herb-photo.tilt-a{ transform:rotate(-3deg); }
+  .herb-photo.tilt-a::before{ transform:translateX(-50%) rotate(-6deg); }
+  .herb-photo.tilt-b{ transform:rotate(2deg); }
+  .herb-photo.tilt-b::before{ transform:translateX(-50%) rotate(5deg); }
+  .herb-name{ font-size:16px; line-height:1.3; text-transform:uppercase; letter-spacing:.3px; }
+  .herb-meta{ font-size:13px; opacity:.8; margin-top:2px; }
+  .empty-state{ text-align:center; color:var(--text-muted); padding:50px 20px; font-size:16px; line-height:1.6; }
+  .stat-row{ display:flex; justify-content:space-between; align-items:baseline; font-size:15px; padding:8px 2px; border-bottom:1px dashed rgba(255,255,255,.1); }
+  .stat-row span:first-child{ color:var(--text-muted); text-transform:uppercase; letter-spacing:.3px; font-size:12px; }
+  .stat-detail{ font-size:13px; color:var(--text-muted); line-height:1.5; padding:8px 2px 0; }
+
+  /* ---------- upgrades ---------- */
+  .upg-card{ display:flex; align-items:center; gap:12px; background:var(--panel-2); border:3px solid var(--outline); padding:12px 13px; margin-bottom:10px; box-shadow:3px 3px 0 rgba(0,0,0,.35); }
+  .upg-info{ flex:1; min-width:0; }
+  .upg-name{ font-size:16px; text-transform:uppercase; letter-spacing:.3px; }
+  .upg-desc{ font-size:13px; color:var(--text-muted); margin-top:2px; }
+  .upg-current{ font-size:13px; color:var(--accent); margin-top:3px; }
+  .upg-pips{ display:flex; gap:4px; margin-top:7px; }
+  .upg-pip{ width:11px; height:11px; border:2px solid var(--outline); background:transparent; }
+  .upg-pip.filled{ background:var(--accent); }
+  .upg-btn{ flex-shrink:0; min-width:84px; text-align:center; }
+
+  /* ---------- task board ---------- */
+  .task-card{ display:flex; align-items:center; gap:12px; background:var(--panel-2); border:3px solid var(--outline); padding:12px 13px; margin-bottom:10px; box-shadow:3px 3px 0 rgba(0,0,0,.35); }
+  .task-card.is-claimed{ opacity:.55; }
+  .task-info{ flex:1; min-width:0; }
+  .task-desc{ font-size:15px; text-transform:uppercase; letter-spacing:.3px; margin-bottom:8px; }
+  .task-reward{ font-size:13px; color:var(--accent); margin-top:6px; }
+  .task-bar{ height:8px; background:var(--outline); border:1px solid var(--outline); }
+  .task-bar-fill{ height:100%; background:repeating-linear-gradient(45deg, var(--accent) 0 3px, var(--accent-dark) 3px 6px); }
+  .task-progress-text{ font-size:14px; color:var(--text-muted); flex-shrink:0; min-width:50px; text-align:right; }
+
+  /* ---------- pests ---------- */
+  .pix-pest{ display:grid; }
+  .pix-pest > div{ width:100%; height:100%; }
+  @media (prefers-reduced-motion:no-preference){
+    .pix-pest{ animation:pestTwitch .35s steps(2) infinite; }
+  }
+  @keyframes pestTwitch{ 0%,100%{ transform:translate(0,0); } 50%{ transform:translate(1px,-1px); } }
+  .tile-pest-badge{ position:absolute; top:-4px; right:-4px; z-index:2; background:var(--panel); border:2px solid var(--danger); padding:2px; }
+  .plot-tile.has-pest{ box-shadow:3px 3px 0 rgba(0,0,0,.4), 0 0 0 2px var(--danger); }
+  .pest-alert{ display:flex; align-items:center; gap:10px; background:rgba(162,59,59,.18); border:2px solid var(--danger); padding:8px 10px; margin-bottom:12px; }
+  .pest-alert-text{ flex:1; font-size:13px; color:var(--danger); line-height:1.4; }
+  .btn-danger{ background:var(--danger); color:#2A0A0A; }
+  .reveal-pest{ font-size:12px; color:#A23B3B; margin-top:4px; }
+  .reveal-precision{ font-size:12px; color:var(--accent-dark); margin-top:4px; }
+
+  /* ---------- sheet ---------- */
+  #sheetBackdrop{ position:fixed; inset:0; background:rgba(0,0,0,.55); opacity:0; pointer-events:none; transition:opacity .25s; z-index:20; }
+  #sheetBackdrop.open{ opacity:1; pointer-events:auto; }
+  #sheet{ position:fixed; left:0; right:0; bottom:0; background:var(--panel); border-top:4px solid var(--outline); padding:16px 18px calc(22px + env(safe-area-inset-bottom)); transform:translateY(100%); transition:transform .3s cubic-bezier(.32,.72,0,1); z-index:21; max-height:80vh; overflow-y:auto; }
+  #sheet.open{ transform:translateY(0); }
+  .sheet-grab{ width:36px; height:4px; background:var(--outline); margin:0 auto 14px; }
+  .sheet-head{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .sheet-blurb{ font-size:15px; color:var(--text-muted); margin-bottom:14px; line-height:1.5; }
+  .sheet-timer{ text-align:center; font-size:26px; margin-bottom:14px; }
+  .sheet-subhead{ font-size:13px; color:var(--text-muted); margin:14px 0 8px; text-transform:uppercase; letter-spacing:.5px; }
+
+  .slider-row{ margin-bottom:14px; }
+  .slider-row label{ display:block; font-size:14px; color:var(--text-muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px; }
+  input[type=range]{ width:100%; height:8px; -webkit-appearance:none; appearance:none; background:linear-gradient(to right, var(--warn) 0% 18%, var(--accent) 18% 82%, var(--warn) 82% 100%); border:2px solid var(--outline); outline:none; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:18px; height:18px; background:var(--text); border:3px solid var(--accent-dark); cursor:pointer; }
+  input[type=range]::-moz-range-thumb{ width:18px; height:18px; background:var(--text); border:3px solid var(--accent-dark); cursor:pointer; border-radius:0; }
+  input[type=range]::-moz-range-track{ background:transparent; }
+
+  .mutation-line{ font-size:16px; margin-bottom:6px; text-transform:uppercase; letter-spacing:.3px; }
+  .mutation-line span{ color:var(--accent); }
+  .stress-warning{ font-size:14px; color:var(--danger); max-height:0; overflow:hidden; opacity:0; transition:all .25s; }
+  .stress-warning.show{ max-height:30px; opacity:1; margin-bottom:8px; }
+  .hint-toggle{ background:none; color:var(--text-muted); font-size:14px; text-decoration:underline; padding:6px 0; font-family:'VT323'; }
+  .hint{ font-size:14px; color:var(--text-muted); line-height:1.5; max-height:0; overflow:hidden; opacity:0; transition:all .25s; }
+  .hint.show{ max-height:140px; opacity:1; margin-top:4px; }
+
+  .seed-list{ display:flex; flex-direction:column; gap:8px; }
+  .seed-row{ display:flex; align-items:center; gap:11px; background:var(--panel-2); border:3px solid var(--outline); padding:8px 10px; }
+  .seed-row-glyph{ flex-shrink:0; width:34px; height:40px; display:flex; align-items:flex-end; justify-content:center; }
+  .seed-row-info{ flex:1; min-width:0; }
+  .seed-row-name{ font-size:15px; text-transform:uppercase; letter-spacing:.3px; }
+  .seed-row-sub{ font-size:13px; color:var(--text-muted); margin-top:1px; }
+
+  .btn{ padding:13px 14px; font-size:15px; background:var(--panel-2); color:var(--text); border:3px solid var(--outline); box-shadow:3px 3px 0 var(--outline); text-transform:uppercase; letter-spacing:.5px; font-family:'VT323'; }
+  .btn:active{ transform:translate(2px,2px); box-shadow:1px 1px 0 var(--outline); }
+  .btn-block{ width:100%; }
+  .btn-primary{ background:var(--accent); color:#0F1A12; }
+  .btn-primary:disabled{ background:var(--panel-2); color:var(--text-muted); box-shadow:none; opacity:.55; transform:none; }
+  .btn-small{ padding:8px 12px; font-size:13px; box-shadow:2px 2px 0 var(--outline); flex-shrink:0; }
+  .btn-small:active{ transform:translate(1px,1px); box-shadow:1px 1px 0 var(--outline); }
+  .btn-accent{ background:var(--violet); color:#2A1140; }
+  .btn:disabled{ opacity:.5; cursor:default; transform:none; box-shadow:none; }
+
+  .reveal-card{ text-align:center; background:var(--parchment); color:var(--parchment-ink); border:3px solid var(--parchment-line); padding:22px 16px 18px; position:relative; margin-bottom:16px; animation:revealIn .45s steps(6) forwards; box-shadow:4px 4px 0 rgba(0,0,0,.35); }
+  @keyframes revealIn{ 0%{opacity:0; transform:scale(.7);} 60%{opacity:1; transform:scale(1.08);} 100%{opacity:1; transform:scale(1);} }
+  .reveal-badge{ position:absolute; top:-10px; right:-6px; background:var(--warn); color:#3B2E1E; font-family:'Press Start 2P'; font-size:9px; padding:5px 7px; border:2px solid var(--outline); }
+  .reveal-name{ font-size:17px; margin-top:6px; text-transform:uppercase; letter-spacing:.3px; }
+  .reveal-cross{ font-size:13px; opacity:.75; margin-top:4px; }
+  .reveal-rewards{ font-size:16px; margin-top:10px; color:var(--accent-dark); }
+  .sparkle{ position:absolute; width:7px; height:7px; opacity:0; animation:sparklePop 1s steps(3) forwards; }
+  @keyframes sparklePop{ 0%{ opacity:0; transform:scale(0); } 40%{ opacity:1; transform:scale(1.3); } 100%{ opacity:0; transform:scale(.6); } }
+</style>
+</head>
+<body>
+
+  <header>
+    <div class="brand"><h1>GREENHOUSE</h1></div>
+    <div class="spore-counter"><span class="spore-icon">&#9670;</span><span id="sporeCount">0</span></div>
+  </header>
+
+  <div class="hint-banner">Tap an empty pot to place your first seed.</div>
+  <div id="toast"></div>
+
+  <main>
+    <section class="screen active" id="screen-greenhouse">
+      <div class="window" id="windowScene">
+        <div class="sky"></div>
+        <div class="hills"></div>
+        <div class="clouds">
+          <div class="cloud cloud-a"><span></span><span></span></div>
+          <div class="cloud cloud-b"><span></span><span></span></div>
+        </div>
+        <div class="bird"></div>
+        <div class="firefly firefly-a"></div>
+        <div class="firefly firefly-b"></div>
+        <div class="stars">
+          <span style="top:10%;left:15%;"></span>
+          <span style="top:22%;left:40%;"></span>
+          <span style="top:14%;left:30%;"></span>
+          <span style="top:30%;left:80%;"></span>
+          <span style="top:8%;left:85%;"></span>
+          <span style="top:35%;left:8%;"></span>
+          <span style="top:18%;left:90%;"></span>
+          <span style="top:40%;left:20%;"></span>
+        </div>
+        <div class="celestial"></div>
+        <div class="mullion mullion-v"></div>
+        <div class="mullion mullion-h"></div>
+      </div>
+      <div class="ledge"></div>
+      <div class="screen-title">Place a seed, tend the pot, see what grows</div>
+      <div class="plot-grid" id="plotGrid"></div>
+    </section>
+
+    <section class="screen" id="screen-tasks">
+      <div class="screen-title">Refreshes in <span id="taskRefreshTimer">--:--</span></div>
+      <div id="taskList"></div>
+    </section>
+
+    <section class="screen" id="screen-upgrades">
+      <div class="screen-title">Permanent upgrades for every pot</div>
+      <div id="upgList"></div>
+    </section>
+
+    <section class="screen" id="screen-herbarium">
+      <div class="screen-title"><span id="herbCount">0</span> strains pressed</div>
+      <div id="herbList"></div>
+    </section>
+  </main>
+
+  <nav>
+    <button class="nav-btn active" data-screen="greenhouse" onclick="showScreen('greenhouse')">GREENHOUSE</button>
+    <button class="nav-btn" data-screen="tasks" onclick="showScreen('tasks')">TASKS</button>
+    <button class="nav-btn" data-screen="upgrades" onclick="showScreen('upgrades')">UPGRADES</button>
+    <button class="nav-btn" data-screen="herbarium" onclick="showScreen('herbarium')">HERBARIUM</button>
+  </nav>
+
+  <div id="sheetBackdrop" onclick="closeSheet()"></div>
+  <div id="sheet">
+    <div class="sheet-grab"></div>
+    <div id="sheetBody"></div>
+  </div>
+
+<script>
+/* ===================== DATA ===================== */
+const SPECIES = {
+  mossputt:  { name:'Mossputt',  hue:128, growthSec:50,  baseSell:4,  deathResist:0.0,  seedCost:0,  lightTarget:50, waterTarget:50, blurb:'A hardy ground cover. Sprouts fast, asks for little.' },
+  fernling:  { name:'Fernling',  hue:150, growthSec:85,  baseSell:6,  deathResist:0.15, seedCost:5,  lightTarget:30, waterTarget:65, blurb:'Delicate fronds. Prefers shade and a steady hand.' },
+  glowbloom: { name:'Glowbloom', hue:280, growthSec:120, baseSell:9,  deathResist:0.0,  seedCost:12, glowBias:0.08, lightTarget:70, waterTarget:40, blurb:'Already half in love with bioluminescence.' },
+  thornvine: { name:'Thornvine', hue:24,  growthSec:150, baseSell:13, deathResist:0.45, seedCost:9,  lightTarget:65, waterTarget:25, blurb:'Tough and slow. Barely notices stress.' }
+};
+
+const RARE_TRAITS = [
+  { id:'sunseeker',   name:'Sunseeker',   desc:'Leans hard into the light — grows noticeably faster.' },
+  { id:'ironroot',    name:'Ironroot',    desc:'Roots like iron. Immune to stress, whatever you do to it.' },
+  { id:'featherseed', name:'Featherseed', desc:'Sheds an extra seed at harvest.' },
+  { id:'emberbloom',  name:'Emberbloom',  desc:'A warm ember glow. Fetches a much better price.' },
+  { id:'driftpetal',  name:'Driftpetal',  desc:'Sways with a restless energy.' },
+  { id:'mimicleaf',   name:'Mimicleaf',   desc:'Borrows its color from whatever grows beside it.' },
+  { id:'stargazer',   name:'Stargazer',   desc:'Glows brighter after dark.' },
+  { id:'gianthusk',   name:'Gianthusk',   desc:'Grows unusually large — slow, but a big yield.' }
+];
+const RARE_TRAITS_BY_ID = Object.fromEntries(RARE_TRAITS.map(t=>[t.id,t]));
+
+const NEIGHBORS = [
+  [1,3],[0,2,4],[1,5],
+  [0,4,6],[1,3,5,7],[2,4,8],
+  [3,7],[4,6,8],[5,7]
+];
+
+const INITIAL_UNLOCKED = [0,1,2,3];
+const UNLOCK_COSTS = {4:15,5:22,6:32,7:48,8:70};
+const WILT_LINES = [
+  "Too much, too fast.",
+  "The stress won. It happens.",
+  "Some lines don't make it past one bad week.",
+  "Compost it and try again."
+];
+const STORAGE_KEY = 'gh_state_v1';
+const DAY_CYCLE_MS = 20*60*1000;
+function getGameHour(){
+  return ((Date.now() % DAY_CYCLE_MS) / DAY_CYCLE_MS) * 24;
+}
+
+/* ===================== TASK BOARD ===================== */
+const BOARD_CYCLE_MS = 3*60*60*1000; // 3 hours
+const TASK_TEMPLATES = [
+  (seed)=>{ const goal=3+Math.floor(seed*3); const keys=Object.keys(SPECIES); const bonusSp=keys[Math.floor(seed*keys.length)%keys.length];
+    return { key:'harvest_any', type:'harvest_any', goal, reward:{spores:goal*6, seed:bonusSp, seedQty:1}, desc:'Harvest '+goal+' plants (any kind)' }; },
+  (seed)=>{ const keys=Object.keys(SPECIES); const spKey=keys[Math.floor(seed*keys.length)%keys.length]; const goal=2+Math.floor(seed*2);
+    return { key:'harvest_species_'+spKey, type:'harvest_species', species:spKey, goal, reward:{spores:goal*9, seed:spKey, seedQty:1}, desc:'Harvest '+goal+' '+SPECIES[spKey].name+(goal>1?'s':'') }; },
+  (seed)=>{ return { key:'discover_mutation', type:'discover_mutation', goal:1, reward:{spores:28, boost:'luck'}, desc:'Discover a new mutation' }; },
+  (seed)=>{ const goal=2+Math.floor(seed*2); return { key:'squash_pest', type:'squash_pest', goal, reward:{spores:goal*11}, desc:'Squash '+goal+' pest'+(goal>1?'s':'') }; },
+  (seed)=>{ const goal=40+Math.floor(seed*40); return { key:'earn_spores', type:'earn_spores', goal, reward:{spores:Math.round(goal*0.5)}, desc:'Earn '+goal+' \u25C6 from harvests' }; },
+  (seed)=>{ return { key:'unlock_plot', type:'unlock_plot', goal:1, reward:{spores:22}, desc:'Unlock a new pot' }; },
+  (seed)=>{ return { key:'buy_upgrade', type:'buy_upgrade', goal:1, reward:{spores:22}, desc:'Buy any upgrade level' }; },
+  (seed)=>{ const goal=1+Math.floor(seed*2); return { key:'well_tended', type:'well_tended', goal, reward:{spores:goal*16, boost:'luck'}, desc:'Harvest '+goal+' well-tended plant'+(goal>1?'s':'') }; }
+];
+function rewardSummary(reward){
+  const parts = [reward.spores+' \u25C6'];
+  if(reward.seed) parts.push('+'+(reward.seedQty||1)+' '+SPECIES[reward.seed].name+' seed'+((reward.seedQty||1)>1?'s':''));
+  if(reward.boost==='luck') parts.push('+luck boost');
+  return parts.join('  \u00B7  ');
+}
+function getBoardSlot(){ return Math.floor(Date.now()/BOARD_CYCLE_MS); }
+function getCurrentTasks(){
+  const slot = state.taskBoard.slot;
+  const used = new Set();
+  const tasks = [];
+  for(let i=0;i<3;i++){
+    const pickRoll = Math.abs(Math.sin(slot*17.231 + i*9.731));
+    let idx = Math.floor(pickRoll*TASK_TEMPLATES.length) % TASK_TEMPLATES.length;
+    while(used.has(idx)) idx = (idx+1) % TASK_TEMPLATES.length;
+    used.add(idx);
+    const subSeed = Math.abs(Math.sin(slot*31.7 + i*13.37));
+    tasks.push(TASK_TEMPLATES[idx](subSeed));
+  }
+  return tasks;
+}
+function ensureTaskBoardCurrent(){
+  const slot = getBoardSlot();
+  if(state.taskBoard.slot !== slot){
+    state.taskBoard = { slot, progress:{}, claimed:{} };
+    saveState();
+    return true;
+  }
+  return false;
+}
+function bumpTaskProgress(type, amount, matchSpecies){
+  ensureTaskBoardCurrent();
+  const tasks = getCurrentTasks();
+  let changed = false;
+  tasks.forEach(t=>{
+    if(t.type!==type) return;
+    if(type==='harvest_species' && t.species!==matchSpecies) return;
+    if(state.taskBoard.claimed[t.key]) return;
+    const cur = state.taskBoard.progress[t.key]||0;
+    if(cur>=t.goal) return;
+    state.taskBoard.progress[t.key] = Math.min(t.goal, cur+amount);
+    changed = true;
+  });
+  if(changed) saveState();
+}
+function claimTask(key){
+  ensureTaskBoardCurrent();
+  const tasks = getCurrentTasks();
+  const task = tasks.find(t=>t.key===key);
+  if(!task || state.taskBoard.claimed[key]) return;
+  const progress = state.taskBoard.progress[key]||0;
+  if(progress < task.goal) return;
+  state.taskBoard.claimed[key] = true;
+  state.spores += task.reward.spores;
+  if(task.reward.seed){
+    const sp = SPECIES[task.reward.seed];
+    const genome = { species:task.reward.seed, hue:sp.hue, glow:false, growthMult:1, yieldMult:1, sellMult:1, extraSeed:0, rareTrait:null, hybridWith:null };
+    addToInventory(task.reward.seed, genome, task.reward.seedQty||1);
+  }
+  if(task.reward.boost==='luck'){ state.nextMutationBoost = 0.15; }
+  saveState();
+  renderTasks(); updateHeader();
+  showToast('Task complete! '+rewardSummary(task.reward));
+}
+function renderTasks(){
+  ensureTaskBoardCurrent();
+  const tasks = getCurrentTasks();
+  const list = document.getElementById('taskList');
+  if(!list) return;
+  const slotEnd = (state.taskBoard.slot+1)*BOARD_CYCLE_MS;
+  const timerEl = document.getElementById('taskRefreshTimer');
+  if(timerEl) timerEl.textContent = fmtTime(slotEnd-Date.now());
+  list.innerHTML = tasks.map(t=>{
+    const progress = state.taskBoard.progress[t.key]||0;
+    const claimed = !!state.taskBoard.claimed[t.key];
+    const complete = progress>=t.goal;
+    let actionHtml;
+    if(claimed) actionHtml = '<button class="btn btn-small" disabled>Claimed</button>';
+    else if(complete) actionHtml = '<button class="btn btn-small btn-primary" onclick="claimTask(\''+t.key+'\')">Claim</button>';
+    else actionHtml = '<div class="task-progress-text">'+progress+' / '+t.goal+'</div>';
+    return '<div class="task-card'+(claimed?' is-claimed':'')+'">'
+      + '<div class="task-info">'
+      + '<div class="task-desc">'+t.desc+'</div>'
+      + '<div class="task-bar"><div class="task-bar-fill" style="width:'+Math.min(100,(progress/t.goal)*100)+'%"></div></div>'
+      + '<div class="task-reward">Reward: '+rewardSummary(t.reward)+'</div>'
+      + '</div>'
+      + actionHtml
+      + '</div>';
+  }).join('');
+}
+
+/* ===================== UPGRADES ===================== */
+const UPGRADES = {
+  growth:     { name:'Faster Growing',  tagline:'growth speed',  sign:'+', perLevel:5,  maxLevel:6, baseCost:18, scale:1.55 },
+  yield:      { name:'Greener Thumb',   tagline:'sell value',    sign:'+', perLevel:5,  maxLevel:6, baseCost:18, scale:1.55 },
+  resist:     { name:'Hardy Roots',     tagline:'wilt risk',     sign:'-', perLevel:10, maxLevel:5,  baseCost:22, scale:1.6  },
+  luck:       { name:'Lucky Soil',      tagline:'mutation odds', sign:'+', perLevel:3,  maxLevel:5,  baseCost:25, scale:1.65 },
+  ladybugs:   { name:'Ladybugs',        tagline:'pest risk',     sign:'-', perLevel:12, maxLevel:5,  baseCost:20, scale:1.6  },
+  sprinkler:  { name:'Sprinkler System', perLevel:0.4, maxLevel:5, baseCost:30, scale:1.7,
+    desc:'Automatically waters each pot toward what\u2019s growing in it wants. Light is still up to you.',
+    currentLabel:(total)=> 'Current: corrects water '+total.toFixed(1)+' pts/sec' },
+  gardenLight: { name:'Garden Light', perLevel:0.4, maxLevel:5, baseCost:30, scale:1.7,
+    desc:'Automatically lights each pot toward what\u2019s growing in it wants. Water is still up to you.',
+    currentLabel:(total)=> 'Current: corrects light '+total.toFixed(1)+' pts/sec' }
+};
+function upgradeCost(key, level){
+  const cfg = UPGRADES[key];
+  return Math.round(cfg.baseCost * Math.pow(cfg.scale, level));
+}
+function purchaseUpgrade(key){
+  const cfg = UPGRADES[key];
+  const level = state.upgrades[key]||0;
+  if(level>=cfg.maxLevel) return;
+  const cost = upgradeCost(key, level);
+  if(state.spores < cost) return;
+  state.spores -= cost;
+  state.upgrades[key] = level+1;
+  bumpTaskProgress('buy_upgrade', 1);
+  saveState();
+  renderUpgrades();
+  updateHeader();
+}
+function renderUpgrades(){
+  const list = document.getElementById('upgList');
+  list.innerHTML = Object.entries(UPGRADES).map(([key,cfg])=>{
+    const level = state.upgrades[key]||0;
+    const maxed = level>=cfg.maxLevel;
+    const cost = upgradeCost(key, level);
+    const unit = cfg.unit || '%';
+    const currentTotal = level*cfg.perLevel;
+    const descText = cfg.desc || (cfg.sign+cfg.perLevel+unit+' '+cfg.tagline+' per level');
+    const currentText = cfg.currentLabel ? cfg.currentLabel(currentTotal) : ('Current: '+cfg.sign+currentTotal+unit+' '+cfg.tagline);
+    const pips = Array.from({length:cfg.maxLevel}, (_,i)=> '<span class="upg-pip'+(i<level?' filled':'')+'"></span>').join('');
+    return '<div class="upg-card">'
+      + '<div class="upg-info">'
+      + '<div class="upg-name">'+cfg.name+'</div>'
+      + '<div class="upg-desc">'+descText+'</div>'
+      + (level>0 ? '<div class="upg-current">'+currentText+'</div>' : '')
+      + '<div class="upg-pips">'+pips+'</div>'
+      + '</div>'
+      + '<button class="btn btn-small upg-btn '+(maxed?'':'btn-primary')+'" '+(maxed||state.spores<cost?'disabled':'')+' onclick="purchaseUpgrade(\''+key+'\')">'+(maxed?'MAXED':cost+' \u25C6')+'</button>'
+      + '</div>';
+  }).join('');
+}
+
+/* ===================== PIXEL SPRITES ===================== */
+const HEAD_W = 9;
+const HEAD_ROWS = 6;
+
+function expandHalf(half){
+  return half + half.slice(0,-1).split('').reverse().join('');
+}
+function padRowsTop(rows, targetLen, width){
+  const blank = '.'.repeat(width);
+  const pad = [];
+  for(let i=0;i<targetLen-rows.length;i++) pad.push(blank);
+  return pad.concat(rows);
+}
+const SPECIES_HALF = {
+  mossputt:  ['..cb.','.cbba','cbbba','cbbba','.bbaa','..aa.'],
+  fernling:  ['...c.','..cb.','.cbb.','cbba.','.bba.','..aa.'],
+  glowbloom: ['..c..','.cbc.','cbbbc','.cbc.','..b..'],
+  thornvine: ['..c..','.a.a.','.bba.','abba.','.ba..']
+};
+const SPECIES_HEAD_FULL = {};
+const SPECIES_HEAD_BUD = {};
+for(const key in SPECIES_HALF){
+  const expanded = SPECIES_HALF[key].map(expandHalf);
+  const full = padRowsTop(expanded, HEAD_ROWS, HEAD_W);
+  SPECIES_HEAD_FULL[key] = full;
+  const bottomCount = Math.max(2, Math.ceil(expanded.length/2));
+  const bottomRows = full.slice(HEAD_ROWS-bottomCount).map(r=>r.replace(/c/g,'b'));
+  SPECIES_HEAD_BUD[key] = padRowsTop(bottomRows, HEAD_ROWS, HEAD_W);
+}
+const SPROUT_ROWS = ['.....','..t..','.t.t.','..s..'];
+const POT_ROWS = ['.RRRRRRR.','.BBBBBBB.','..BBBBB..','..BBDBB..','...DDD...'];
+const PEST_ROWS = ['.x.x.','xxxxx','.xxx.','.x.x.'];
+const PEST_COLOR = '#A23B3B';
+
+function stemRows(height, width){
+  const rows = [];
+  const pad = '.'.repeat((width-3)/2);
+  for(let i=0;i<height-1;i++) rows.push(pad+'ttt'+pad);
+  rows.push(pad+'sss'+pad);
+  return rows;
+}
+function spriteRows(genome, stage){
+  if(stage==='sprout') return { rows: SPROUT_ROWS, width:5 };
+  const head = stage==='bloom' ? SPECIES_HEAD_FULL[genome.species] : SPECIES_HEAD_BUD[genome.species];
+  const stHeight = stage==='bloom' ? 5 : 3;
+  return { rows: head.concat(stemRows(stHeight, HEAD_W)), width: HEAD_W };
+}
+function cellColor(token, hue, wilt){
+  if(token==='.') return null;
+  if(token==='t') return wilt ? '#7A6A52' : '#3F6B42';
+  if(token==='s') return wilt ? '#5C4F3D' : '#2C4A2E';
+  if(wilt){
+    if(token==='a') return '#6B5A45';
+    if(token==='b') return '#8A7558';
+    if(token==='c') return '#A4906F';
+  }
+  if(token==='a') return 'hsl('+hue+' 55% 34%)';
+  if(token==='b') return 'hsl('+hue+' 60% 50%)';
+  if(token==='c') return 'hsl('+hue+' 65% 68%)';
+  return null;
+}
+function potColor(token, locked){
+  if(token==='.') return null;
+  if(locked){
+    if(token==='R') return '#5A5A52';
+    if(token==='B') return '#454540';
+    if(token==='D') return '#2C2C28';
+  }
+  if(token==='R') return 'var(--pot-light)';
+  if(token==='B') return 'var(--pot)';
+  if(token==='D') return 'var(--pot-dark)';
+  return null;
+}
+function computeStage(pct){
+  if(pct<30) return 'sprout';
+  if(pct<70) return 'budding';
+  return 'bloom';
+}
+function renderSprite(genome, size, stage, opts){
+  opts = opts || {};
+  if(!genome) return '';
+  let hue = genome.hue;
+  const wilt = !!opts.wilt;
+  let glow=false, drift=false;
+  if(!wilt){
+    if(genome.glow) glow = true;
+    if(genome.rareTrait==='driftpetal') drift = true;
+    if(genome.rareTrait==='stargazer'){ const h=getGameHour(); if(h>=19||h<6) glow=true; }
+    if(genome.rareTrait==='mimicleaf' && opts.neighborHue!=null) hue = opts.neighborHue;
+  }
+  const useStage = wilt ? 'bloom' : stage;
+  const { rows, width } = spriteRows(genome, useStage);
+  const cell = size==='lg' ? 8 : 4;
+  let cellsHtml = '';
+  for(const row of rows){
+    for(const ch of row){
+      const color = cellColor(ch, hue, wilt);
+      cellsHtml += '<div style="background:'+(color||'transparent')+'"></div>';
+    }
+  }
+  const classes = ['pix-sprite'];
+  if(glow) classes.push('is-glow');
+  if(drift) classes.push('is-drift');
+  if(wilt) classes.push('is-wilt');
+  return '<div class="'+classes.join(' ')+'" style="--hue:'+Math.round(hue)+';grid-template-columns:repeat('+width+','+cell+'px);grid-auto-rows:'+cell+'px;">'+cellsHtml+'</div>';
+}
+function renderPot(size, locked){
+  const cell = size==='lg' ? 8 : 3.5;
+  let cellsHtml = '';
+  for(const row of POT_ROWS){
+    for(const ch of row){
+      const color = potColor(ch, locked);
+      cellsHtml += '<div style="background:'+(color||'transparent')+'"></div>';
+    }
+  }
+  return '<div class="pix-pot" style="grid-template-columns:repeat(9,'+cell+'px);grid-auto-rows:'+cell+'px;">'+cellsHtml+'</div>';
+}
+function renderPest(size){
+  const cell = size==='lg' ? 6 : 3;
+  let cellsHtml = '';
+  for(const row of PEST_ROWS){
+    for(const ch of row){
+      cellsHtml += '<div style="background:'+(ch==='x' ? PEST_COLOR : 'transparent')+'"></div>';
+    }
+  }
+  return '<div class="pix-pest" style="grid-template-columns:repeat(5,'+cell+'px);grid-auto-rows:'+cell+'px;">'+cellsHtml+'</div>';
+}
+const SPRINKLER_ROWS = ['..H..','.HHH.','..P..','..P..','..P..','.GGG.'];
+function gardenGearColor(token){
+  if(token==='.') return null;
+  if(token==='H') return '#A8B0AC';
+  if(token==='P') return '#5C6660';
+  if(token==='G') return '#3A4540';
+  return null;
+}
+function gearCells(rows, cell, glowTokens){
+  const cols = rows[0].length;
+  let cellsHtml = '';
+  for(const row of rows){
+    for(const ch of row){
+      const cls = (glowTokens && glowTokens.includes(ch)) ? ' class="gear-glow"' : '';
+      cellsHtml += '<div'+cls+' style="background:'+(gardenGearColor(ch)||'transparent')+'"></div>';
+    }
+  }
+  return '<div class="pix-gear" style="grid-template-columns:repeat('+cols+','+cell+'px);grid-auto-rows:'+cell+'px;">'+cellsHtml+'</div>';
+}
+function renderSprinkler(size){
+  const cell = size==='lg' ? 6 : 3;
+  return '<div class="tile-gear-wrap">'+gearCells(SPRINKLER_ROWS, cell)
+    + '<span class="droplet droplet-a"></span><span class="droplet droplet-b"></span></div>';
+}
+function tilePotStack(plantSlotHtml, locked){
+  return '<div class="tile-pot-stack"><div class="tile-plant-slot">'+plantSlotHtml+'</div>'+renderPot('sm', locked)+'</div>';
+}
+function gearAccessoryRow(rowClass, slotClass, potHtml, showSprinkler, size){
+  if(!showSprinkler) return potHtml;
+  return '<div class="'+rowClass+'">'
+    + '<div class="'+slotClass+'">'+renderSprinkler(size)+'</div>'
+    + potHtml
+    + '</div>';
+}
+function tileAccessoryRow(potStackHtml, showSprinkler){
+  return gearAccessoryRow('tile-accessory-row', 'tile-accessory-slot', potStackHtml, showSprinkler, 'sm');
+}
+function sheetAccessoryRow(potWrapHtml, showSprinkler){
+  return gearAccessoryRow('pot-accessory-row', 'pot-accessory-slot', potWrapHtml, showSprinkler, 'lg');
+}
+
+/* ===================== STATE ===================== */
+let state = null;
+let currentSheetIdx = null;
+let currentSkyPhase = null;
+function applyWindowPhase(){
+  const h = getGameHour();
+  let phase;
+  if(h>=20 || h<5) phase='night';
+  else if(h<7) phase='dawn';
+  else if(h<17) phase='day';
+  else phase='dusk';
+  if(phase===currentSkyPhase) return;
+  currentSkyPhase = phase;
+  const el = document.getElementById('windowScene');
+  if(el) el.className = 'window is-'+phase;
+}
+let revealShowing = false;
+let lastSheetDisplayStatus = null;
+let saveTimer = null;
+let toastTimer = null;
+
+function buildInitialPlots(){
+  const arr = [];
+  for(let i=0;i<9;i++){
+    arr.push({ idx:i, locked: !INITIAL_UNLOCKED.includes(i), unlockCost: UNLOCK_COSTS[i]||0,
+      status:'empty', genome:null, plantedAt:0, growthDurationMs:0, light:50, water:50, lastDeathCheck:0,
+      pest:null, lastPestCheck:0, lastSprinklerCheck:0, lastLightCheck:0 });
+  }
+  return arr;
+}
+function defaultState(){
+  return { spores:20, everPlanted:false, plots:buildInitialPlots(), inventory:[], herbarium:[],
+    upgrades:{ growth:0, yield:0, resist:0, luck:0, ladybugs:0, sprinkler:0, gardenLight:0 },
+    taskBoard:{ slot:getBoardSlot(), progress:{}, claimed:{} }, nextMutationBoost:0, lastSavedAt:Date.now() };
+}
+async function loadState(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, false);
+    if(res && res.value){
+      const parsed = JSON.parse(res.value);
+      const merged = Object.assign(defaultState(), parsed);
+      if(!Array.isArray(merged.plots) || merged.plots.length!==9) merged.plots = buildInitialPlots();
+      merged.upgrades = Object.assign({ growth:0, yield:0, resist:0, luck:0, ladybugs:0, sprinkler:0, gardenLight:0 }, parsed.upgrades||{});
+      if(!merged.taskBoard || typeof merged.taskBoard.slot!=='number') merged.taskBoard = { slot:getBoardSlot(), progress:{}, claimed:{} };
+      return merged;
+    }
+  }catch(e){ /* no saved state yet */ }
+  return defaultState();
+}
+async function saveState(){
+  try{
+    state.lastSavedAt = Date.now();
+    await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+  }catch(e){ console.warn('save failed', e); }
+}
+function scheduleSave(){ clearTimeout(saveTimer); saveTimer = setTimeout(saveState, 600); }
+
+/* ===================== HELPERS ===================== */
+function clamp(v,min,max){ return Math.min(max, Math.max(min, v)); }
+function randRange(a,b){ return a + Math.random()*(b-a); }
+function sliderGradient(target){
+  const safeStart = clamp(target-15, 0, 100);
+  const safeEnd = clamp(target+15, 0, 100);
+  return 'linear-gradient(to right, var(--warn) 0% '+safeStart+'%, var(--accent) '+safeStart+'% '+safeEnd+'%, var(--warn) '+safeEnd+'% 100%)';
+}
+function fmtTime(ms){
+  if(ms<0) ms = 0;
+  const s = Math.ceil(ms/1000);
+  const m = Math.floor(s/60);
+  const sec = s%60;
+  return m + ':' + String(sec).padStart(2,'0');
+}
+function timeAgo(ts){
+  const d = Date.now()-ts;
+  if(d<60000) return 'just now';
+  if(d<3600000) return Math.floor(d/60000)+'m ago';
+  if(d<86400000) return Math.floor(d/3600000)+'h ago';
+  return Math.floor(d/86400000)+'d ago';
+}
+function hueToColorName(hue){
+  const h = ((hue%360)+360)%360;
+  const buckets = [[15,'Crimson'],[40,'Amber'],[65,'Gold'],[150,'Verdant'],[195,'Teal'],[250,'Azure'],[290,'Violet'],[330,'Magenta'],[360,'Crimson']];
+  for(const [max,name] of buckets){ if(h<=max) return name; }
+  return 'Crimson';
+}
+function getSpeciesTargets(speciesKey){
+  const sp = SPECIES[speciesKey];
+  return {
+    lightTarget: (sp && sp.lightTarget!=null) ? sp.lightTarget : 50,
+    waterTarget: (sp && sp.waterTarget!=null) ? sp.waterTarget : 50
+  };
+}
+function computeStress(plot){
+  const { lightTarget, waterTarget } = getSpeciesTargets(plot.genome && plot.genome.species);
+  const lightStress = Math.abs(plot.light-lightTarget);
+  const waterStress = Math.abs(plot.water-waterTarget);
+  return { lightStress, waterStress, maxStress: Math.max(lightStress,waterStress), lightTarget, waterTarget };
+}
+function getDisplayStatus(plot){
+  if(plot.locked) return 'locked';
+  if(plot.status==='wilted') return 'wilted';
+  if(plot.status==='empty') return 'empty';
+  if(plot.status==='growing'){
+    return (Date.now() >= plot.plantedAt+plot.growthDurationMs) ? 'ready' : 'growing';
+  }
+  return 'empty';
+}
+function neighborHueFor(idx){
+  for(const n of (NEIGHBORS[idx]||[])){
+    const np = state.plots[n];
+    if(np && !np.locked && np.genome){ return np.genome.hue; }
+  }
+  return null;
+}
+function hasAdjacentDifferentSpecies(idx, speciesKey){
+  for(const n of (NEIGHBORS[idx]||[])){
+    const np = state.plots[n];
+    if(np && !np.locked && np.genome && np.status==='growing' && np.genome.species!==speciesKey) return true;
+  }
+  return false;
+}
+function adjacentDifferentGenome(idx, speciesKey){
+  for(const n of (NEIGHBORS[idx]||[])){
+    const np = state.plots[n];
+    if(np && !np.locked && np.genome && np.status==='growing' && np.genome.species!==speciesKey){
+      return { genome: np.genome, name: SPECIES[np.genome.species].name };
+    }
+  }
+  return null;
+}
+
+/* ===================== NAMING ===================== */
+function buildSpecimenName(speciesKey, genome){
+  const base = SPECIES[speciesKey].name;
+  const color = hueToColorName(genome.hue);
+  let name = genome.hybridWith ? (base+' \u00D7 '+genome.hybridWith) : base;
+  name += ' var. '+color;
+  if(genome.rareTrait) name += ' \u2018'+RARE_TRAITS_BY_ID[genome.rareTrait].name+'\u2019';
+  return name;
+}
+
+/* ===================== GAME LOGIC ===================== */
+function computeMutationChance(plot, idx){
+  const s = computeStress(plot);
+  let chance = 0.05;
+  if(s.maxStress>30) chance += 0.30;
+  else if(s.maxStress>15) chance += 0.12;
+  if(hasAdjacentDifferentSpecies(idx, plot.genome.species)) chance += 0.15;
+  const sp = SPECIES[plot.genome.species];
+  if(sp && sp.glowBias) chance += sp.glowBias;
+  const luckLevel = (state.upgrades && state.upgrades.luck) || 0;
+  chance += luckLevel * (UPGRADES.luck.perLevel/100);
+  if(state.nextMutationBoost) chance += state.nextMutationBoost;
+  return Math.min(chance, 0.65);
+}
+function applyTraitEffect(genome, traitId){
+  switch(traitId){
+    case 'sunseeker': genome.growthMult = clamp((genome.growthMult||1)-0.2, 0.4, 2.5); break;
+    case 'featherseed': genome.extraSeed = (genome.extraSeed||0)+1; break;
+    case 'emberbloom': genome.sellMult = (genome.sellMult||1)*1.4; genome.glow = true; break;
+    case 'gianthusk':
+      genome.yieldMult = clamp((genome.yieldMult||1)*1.5, 0.4, 4);
+      genome.growthMult = clamp((genome.growthMult||1)+0.5, 0.4, 2.5);
+      break;
+    case 'stargazer': genome.glow = true; break;
+    default: break;
+  }
+}
+function rollMutation(plot, idx){
+  const chance = computeMutationChance(plot, idx);
+  const mutated = Math.random() < chance;
+  const genome = Object.assign({}, plot.genome);
+  let crossInfo = null;
+  if(mutated){
+    const r = Math.random();
+    if(r<0.18){
+      const trait = RARE_TRAITS[Math.floor(Math.random()*RARE_TRAITS.length)];
+      applyTraitEffect(genome, trait.id);
+      genome.rareTrait = trait.id;
+      genome.hue = (genome.hue + randRange(-30,30) + 360)%360;
+    } else if(r<0.30){
+      genome.glow = true;
+    } else {
+      const which = Math.random();
+      if(which<0.34) genome.growthMult = clamp((genome.growthMult||1)+randRange(-0.2,0.2), 0.4, 2.5);
+      else if(which<0.67) genome.yieldMult = clamp((genome.yieldMult||1)+randRange(-0.1,0.3), 0.4, 4);
+      else genome.hue = (genome.hue + randRange(-40,40) + 360)%360;
+    }
+    const cross = adjacentDifferentGenome(idx, plot.genome.species);
+    if(cross && Math.random()<0.5){
+      genome.hue = Math.round((genome.hue + cross.genome.hue)/2);
+      genome.yieldMult = clamp(((genome.yieldMult||1)+(cross.genome.yieldMult||1))/2*1.1, 0.4, 4);
+      genome.hybridWith = cross.name;
+      crossInfo = cross.name;
+    }
+  }
+  return { genome, mutated, crossInfo };
+}
+function applyDeathRisk(plot, nowMs){
+  if(plot.status!=='growing') return;
+  if(plot.genome && plot.genome.rareTrait==='ironroot') { plot.lastDeathCheck = nowMs; return; }
+  const finishAt = plot.plantedAt + plot.growthDurationMs;
+  const periodEnd = Math.min(nowMs, finishAt);
+  const last = plot.lastDeathCheck || plot.plantedAt;
+  if(periodEnd<=last) return;
+  const elapsedSec = (periodEnd-last)/1000;
+  plot.lastDeathCheck = periodEnd;
+  const stress = computeStress(plot);
+  if(stress.maxStress>30){
+    const baseChancePerSec = 0.0045;
+    const resist = (SPECIES[plot.genome.species] && SPECIES[plot.genome.species].deathResist) || 0;
+    const resistLevel = (state.upgrades && state.upgrades.resist) || 0;
+    const upgradeFactor = Math.max(0, 1 - resistLevel*(UPGRADES.resist.perLevel/100));
+    const perSec = baseChancePerSec*(1-resist)*upgradeFactor;
+    const survival = Math.pow(1-perSec, elapsedSec);
+    if(Math.random() > survival){ plot.status = 'wilted'; }
+  }
+}
+function applyPestRisk(plot, nowMs){
+  if(plot.status!=='growing') return;
+  if(plot.pest) return; // already infested, severity grows on its own via timestamp
+  const finishAt = plot.plantedAt + plot.growthDurationMs;
+  const periodEnd = Math.min(nowMs, finishAt);
+  const last = plot.lastPestCheck || plot.plantedAt;
+  if(periodEnd<=last) return;
+  const elapsedSec = (periodEnd-last)/1000;
+  plot.lastPestCheck = periodEnd;
+  const stress = computeStress(plot);
+  const basePerSec = 0.0022 * (stress.maxStress>30 ? 1.6 : 1);
+  const ladybugLevel = (state.upgrades && state.upgrades.ladybugs) || 0;
+  const ladybugFactor = Math.max(0, 1 - ladybugLevel*(UPGRADES.ladybugs.perLevel/100));
+  const noInfestProb = Math.pow(1-(basePerSec*ladybugFactor), elapsedSec);
+  if(Math.random() > noInfestProb){ plot.pest = { startedAt: periodEnd }; }
+}
+function pestSeverity(plot){
+  if(!plot.pest) return 0;
+  return clamp((Date.now()-plot.pest.startedAt)/plot.growthDurationMs*1.5, 0, 1);
+}
+function moveToward(value, target, maxDelta){
+  if(value < target) return Math.min(target, value+maxDelta);
+  if(value > target) return Math.max(target, value-maxDelta);
+  return value;
+}
+function applySprinkler(plot, nowMs){
+  if(plot.status!=='growing') return;
+  const level = (state.upgrades && state.upgrades.sprinkler) || 0;
+  if(level<=0){ plot.lastSprinklerCheck = nowMs; return; }
+  const finishAt = plot.plantedAt + plot.growthDurationMs;
+  const periodEnd = Math.min(nowMs, finishAt);
+  const last = plot.lastSprinklerCheck || plot.plantedAt;
+  if(periodEnd<=last) return;
+  const elapsedSec = (periodEnd-last)/1000;
+  plot.lastSprinklerCheck = periodEnd;
+  const maxDelta = level * UPGRADES.sprinkler.perLevel * elapsedSec;
+  const { waterTarget } = getSpeciesTargets(plot.genome && plot.genome.species);
+  plot.water = moveToward(plot.water, waterTarget, maxDelta);
+}
+function applyGardenLight(plot, nowMs){
+  if(plot.status!=='growing') return;
+  const level = (state.upgrades && state.upgrades.gardenLight) || 0;
+  if(level<=0){ plot.lastLightCheck = nowMs; return; }
+  const finishAt = plot.plantedAt + plot.growthDurationMs;
+  const periodEnd = Math.min(nowMs, finishAt);
+  const last = plot.lastLightCheck || plot.plantedAt;
+  if(periodEnd<=last) return;
+  const elapsedSec = (periodEnd-last)/1000;
+  plot.lastLightCheck = periodEnd;
+  const maxDelta = level * UPGRADES.gardenLight.perLevel * elapsedSec;
+  const { lightTarget } = getSpeciesTargets(plot.genome && plot.genome.species);
+  plot.light = moveToward(plot.light, lightTarget, maxDelta);
+}
+function invSig(speciesKey, genome){
+  return [speciesKey, genome.rareTrait||'-', genome.glow?1:0, Math.round(genome.hue/15), genome.hybridWith||'-'].join('|');
+}
+function addToInventory(speciesKey, genome, qty){
+  const sig = invSig(speciesKey, genome);
+  let stack = state.inventory.find(s=>s.sig===sig);
+  if(stack){ stack.qty += qty; }
+  else { state.inventory.push({ id: sig+'_'+Date.now(), sig, species: speciesKey, genome: Object.assign({},genome), qty }); }
+}
+function logHerbarium(speciesKey, genome){
+  const colorName = hueToColorName(genome.hue);
+  const key = [speciesKey, genome.rareTrait||'-', genome.glow?1:0, colorName, genome.hybridWith||'-'].join('|');
+  let entry = state.herbarium.find(e=>e.key===key);
+  if(entry){ entry.count++; entry.lastFound = Date.now(); return { isNew:false, name: entry.name }; }
+  const name = buildSpecimenName(speciesKey, genome);
+  entry = { key, species: speciesKey, genome: Object.assign({},genome), name, firstFound: Date.now(), lastFound: Date.now(), count:1 };
+  state.herbarium.unshift(entry);
+  return { isNew:true, name };
+}
+function plantSeed(idx, source){
+  const plot = state.plots[idx];
+  if(plot.locked || plot.status!=='empty') return false;
+  let genome;
+  if(source.type==='base'){
+    const sp = SPECIES[source.speciesKey];
+    if(state.spores < sp.seedCost) return false;
+    state.spores -= sp.seedCost;
+    genome = { species: source.speciesKey, hue:(sp.hue+randRange(-10,10)+360)%360, glow:false, growthMult:1, yieldMult:1, sellMult:1, extraSeed:0, rareTrait:null, hybridWith:null };
+  } else {
+    const stack = state.inventory.find(s=>s.id===source.stackId);
+    if(!stack || stack.qty<=0) return false;
+    stack.qty -= 1;
+    genome = Object.assign({}, stack.genome);
+    if(stack.qty<=0) state.inventory = state.inventory.filter(s=>s.qty>0);
+  }
+  const sp = SPECIES[genome.species];
+  const growthLevel = (state.upgrades && state.upgrades.growth) || 0;
+  const growthFactor = Math.max(0.3, 1 - growthLevel*(UPGRADES.growth.perLevel/100));
+  plot.genome = genome;
+  plot.status = 'growing';
+  plot.plantedAt = Date.now();
+  plot.growthDurationMs = Math.max(8, sp.growthSec*(genome.growthMult||1)*growthFactor)*1000;
+  plot.light = 50; plot.water = 50;
+  plot.lastDeathCheck = plot.plantedAt;
+  plot.pest = null; plot.lastPestCheck = plot.plantedAt; plot.lastSprinklerCheck = plot.plantedAt; plot.lastLightCheck = plot.plantedAt;
+  state.everPlanted = true;
+  document.body.classList.remove('show-hint');
+  saveState();
+  return true;
+}
+function harvestPlot(idx){
+  const plot = state.plots[idx];
+  if(plot.locked || plot.status!=='growing' || getDisplayStatus(plot)!=='ready') return null;
+  const { genome: finalGenome, mutated, crossInfo } = rollMutation(plot, idx);
+  if(state.nextMutationBoost) state.nextMutationBoost = 0;
+  const sp = SPECIES[plot.genome.species];
+  const yieldLevel = (state.upgrades && state.upgrades.yield) || 0;
+  const yieldUpgradeFactor = 1 + yieldLevel*(UPGRADES.yield.perLevel/100);
+  const severity = pestSeverity(plot);
+  const pestPenalty = plot.pest ? clamp(0.15 + severity*0.45, 0.15, 0.6) : 0;
+  const stress = computeStress(plot);
+  const precisionLight = clamp(1 - stress.lightStress/15, 0, 1);
+  const precisionWater = clamp(1 - stress.waterStress/15, 0, 1);
+  const precisionBonus = Math.min(precisionLight, precisionWater) * 0.25;
+  const speciesKey = plot.genome.species;
+  const sellValue = Math.round(sp.baseSell * (finalGenome.yieldMult||1) * (finalGenome.sellMult||1) * yieldUpgradeFactor * (1-pestPenalty) * (1+precisionBonus) * randRange(0.85,1.15));
+  state.spores += sellValue;
+  const seedQty = 1 + (finalGenome.extraSeed||0);
+  addToInventory(plot.genome.species, finalGenome, seedQty);
+  const { isNew, name } = logHerbarium(plot.genome.species, finalGenome);
+  bumpTaskProgress('harvest_any', 1);
+  bumpTaskProgress('harvest_species', 1, speciesKey);
+  bumpTaskProgress('earn_spores', sellValue);
+  if(isNew) bumpTaskProgress('discover_mutation', 1);
+  if(precisionBonus>0) bumpTaskProgress('well_tended', 1);
+  plot.status='empty'; plot.genome=null; plot.plantedAt=0; plot.growthDurationMs=0; plot.light=50; plot.water=50; plot.lastDeathCheck=0;
+  plot.pest=null; plot.lastPestCheck=0; plot.lastSprinklerCheck=0; plot.lastLightCheck=0;
+  saveState();
+  return { mutated, isNew, name, sellValue, seedQty, genome:finalGenome, crossInfo, pestPenalty, precisionBonus };
+}
+
+/* ===================== RENDER: GREENHOUSE ===================== */
+let tileEls = [];
+function buildPlotTiles(){
+  const grid = document.getElementById('plotGrid');
+  grid.innerHTML = '';
+  tileEls = [];
+  for(let i=0;i<9;i++){
+    const wrap = document.createElement('div');
+    wrap.className = 'plot-tile';
+    wrap.dataset.idx = i;
+    wrap.innerHTML = '<div class="plot-tile-inner"></div>';
+    wrap.addEventListener('click', ()=>openSheet(i));
+    grid.appendChild(wrap);
+    tileEls.push(wrap);
+  }
+}
+function buildTileInnerHTML(plot, idx){
+  const ds = getDisplayStatus(plot);
+  if(ds==='locked'){
+    return '<div class="tile-top-badge">Locked</div><div class="tile-bottom-text">'+plot.unlockCost+' \u25C6</div>';
+  }
+  if(ds==='empty'){
+    return tilePotStack('<span class="tile-plus-mini">+</span>', false)
+      + '<div class="tile-bottom-text">Empty</div>';
+  }
+  if(ds==='growing'){
+    const remaining = (plot.plantedAt+plot.growthDurationMs) - Date.now();
+    const pct = clamp(((Date.now()-plot.plantedAt)/plot.growthDurationMs)*100, 0, 100);
+    const sprinklerOn = ((state.upgrades && state.upgrades.sprinkler) || 0) > 0;
+    return '<div class="tile-top-badge">'+fmtTime(remaining)+'</div>'
+      + (plot.pest ? '<div class="tile-pest-badge">'+renderPest('sm')+'</div>' : '')
+      + tileAccessoryRow(tilePotStack(renderSprite(plot.genome,'sm',computeStage(pct),{neighborHue:neighborHueFor(idx)}), false), sprinklerOn)
+      + '<div class="tile-progress"><div class="tile-progress-fill" style="width:'+pct+'%"></div></div>';
+  }
+  if(ds==='ready'){
+    const sprinklerOn = ((state.upgrades && state.upgrades.sprinkler) || 0) > 0;
+    return '<div class="tile-top-badge is-ready">Ready!</div>'
+      + (plot.pest ? '<div class="tile-pest-badge">'+renderPest('sm')+'</div>' : '')
+      + tileAccessoryRow(tilePotStack(renderSprite(plot.genome,'sm','bloom',{neighborHue:neighborHueFor(idx)}), false), sprinklerOn);
+  }
+  if(ds==='wilted'){
+    return '<div class="tile-top-badge">Wilted</div>'
+      + tilePotStack(renderSprite(plot.genome,'sm','bloom',{wilt:true}), false);
+  }
+  return '';
+}
+function updateAllTiles(){
+  for(let i=0;i<9;i++){
+    const plot = state.plots[i];
+    const ds = getDisplayStatus(plot);
+    tileEls[i].className = 'plot-tile' + (ds==='locked' ? ' locked' : '') + (plot.pest && (ds==='growing'||ds==='ready') ? ' has-pest' : '');
+    tileEls[i].querySelector('.plot-tile-inner').innerHTML = buildTileInnerHTML(plot, i);
+  }
+}
+function updateHeader(){
+  document.getElementById('sporeCount').textContent = Math.round(state.spores);
+}
+
+/* ===================== RENDER: HERBARIUM ===================== */
+function renderHerbarium(){
+  const list = document.getElementById('herbList');
+  document.getElementById('herbCount').textContent = state.herbarium.length;
+  if(!state.herbarium.length){
+    list.innerHTML = '<div class="empty-state">Nothing pressed yet.<br>Harvest something strange.</div>';
+    return;
+  }
+  list.innerHTML = state.herbarium.map((e,i)=>{
+    const tilt = i%2===0 ? 'tilt-a' : 'tilt-b';
+    return '<div class="herb-card" onclick="openHerbDetail(\''+e.key+'\')">'
+      + '<div class="herb-photo '+tilt+'">'+tilePotStack(renderSprite(e.genome,'sm','bloom',{}), false)+'</div>'
+      + '<div class="herb-info">'
+      + '<div class="herb-name">'+e.name+'</div>'
+      + '<div class="herb-meta">'+SPECIES[e.species].name+' \u00B7 found '+timeAgo(e.firstFound)+(e.count>1 ? ' \u00B7 \u00D7'+e.count : '')+'</div>'
+      + '</div></div>';
+  }).join('');
+}
+
+/* ===================== SHEET ===================== */
+function pestAlertHtml(idx){
+  const plot = state.plots[idx];
+  if(!plot.pest) return '';
+  return '<div class="pest-alert">'+renderPest('lg')+'<div class="pest-alert-text">Pests! Squash them before they ruin the harvest.</div><button class="btn btn-small btn-danger" onclick="squashPest('+idx+')">Squash</button></div>';
+}
+function squashPest(idx){
+  const plot = state.plots[idx];
+  plot.pest = null;
+  bumpTaskProgress('squash_pest', 1);
+  saveState();
+  renderSheetFull(idx); updateAllTiles();
+}
+function openHerbDetail(key){
+  const entry = state.herbarium.find(e=>e.key===key);
+  if(!entry) return;
+  currentSheetIdx = null;
+  revealShowing = false;
+  renderHerbDetailSheet(entry);
+  document.getElementById('sheet').classList.add('open');
+  document.getElementById('sheetBackdrop').classList.add('open');
+}
+function renderHerbDetailSheet(entry){
+  const g = entry.genome;
+  const growthDelta = Math.round((1-(g.growthMult||1))*100);
+  const yieldDelta = Math.round(((g.yieldMult||1)-1)*100);
+  const sellDelta = Math.round(((g.sellMult||1)-1)*100);
+  const body = document.getElementById('sheetBody');
+  let html = '<div class="sheet-head"><h3>Specimen</h3></div>'
+    + '<div class="sprite-wrap-lg">'+renderSprite(g,'lg','bloom',{})+'</div>'
+    + '<div class="pot-wrap-lg">'+renderPot('lg', false)+'</div>'
+    + '<div class="reveal-name" style="text-align:center;margin-bottom:10px;">'+entry.name+'</div>'
+    + '<div class="stat-row"><span>Species</span><span>'+SPECIES[entry.species].name+'</span></div>'
+    + '<div class="stat-row"><span>Growth speed</span><span>'+(growthDelta>=0?'+':'')+growthDelta+'%</span></div>'
+    + '<div class="stat-row"><span>Yield</span><span>'+(yieldDelta>=0?'+':'')+yieldDelta+'%</span></div>'
+    + (sellDelta!==0 ? '<div class="stat-row"><span>Sell value</span><span>'+(sellDelta>=0?'+':'')+sellDelta+'%</span></div>' : '')
+    + '<div class="stat-row"><span>Glow</span><span>'+(g.glow?'Yes':'No')+'</span></div>'
+    + (g.rareTrait ? '<div class="stat-row"><span>Trait</span><span>'+RARE_TRAITS_BY_ID[g.rareTrait].name+'</span></div><div class="stat-detail">'+RARE_TRAITS_BY_ID[g.rareTrait].desc+'</div>' : '')
+    + (g.hybridWith ? '<div class="stat-row"><span>Cross</span><span>'+g.hybridWith+'</span></div>' : '')
+    + '<div class="stat-row"><span>First found</span><span>'+timeAgo(entry.firstFound)+'</span></div>'
+    + (entry.count>1 ? '<div class="stat-row"><span>Times found</span><span>\u00D7'+entry.count+'</span></div>' : '')
+    + '<button class="btn btn-block" style="margin-top:16px" onclick="closeSheet()">Close</button>';
+  body.innerHTML = html;
+}
+function openSheet(idx){
+  currentSheetIdx = idx;
+  revealShowing = false;
+  renderSheetFull(idx);
+  document.getElementById('sheet').classList.add('open');
+  document.getElementById('sheetBackdrop').classList.add('open');
+}
+function closeSheet(){
+  currentSheetIdx = null;
+  revealShowing = false;
+  document.getElementById('sheet').classList.remove('open');
+  document.getElementById('sheetBackdrop').classList.remove('open');
+}
+function renderSheetFull(idx){
+  const plot = state.plots[idx];
+  const ds = getDisplayStatus(plot);
+  lastSheetDisplayStatus = ds;
+  const body = document.getElementById('sheetBody');
+  let html = '';
+
+  if(ds==='locked'){
+    html = '<div class="sheet-head"><h3>Locked pot</h3></div>'
+      + '<div class="pot-wrap-lg">'+renderPot('lg', true)+'</div>'
+      + '<p class="sheet-blurb">Clear ground for another pot. More room, more chances for cross-pollination.</p>'
+      + '<button class="btn btn-primary btn-block" '+(state.spores<plot.unlockCost?'disabled':'')+' onclick="unlockPlot('+idx+')">Unlock for '+plot.unlockCost+' \u25C6</button>';
+
+  } else if(ds==='empty'){
+    const baseRows = Object.entries(SPECIES).map(([key,sp])=>{
+      return '<div class="seed-row">'
+        + '<div class="seed-row-glyph">'+renderSprite({species:key,hue:sp.hue,glow:false},'sm','bloom')+'</div>'
+        + '<div class="seed-row-info"><div class="seed-row-name">'+sp.name+'</div><div class="seed-row-sub">'+sp.blurb+' Likes light ~'+sp.lightTarget+'%, water ~'+sp.waterTarget+'%.</div></div>'
+        + '<button class="btn btn-small" '+(state.spores<sp.seedCost?'disabled':'')+' onclick="plantBase('+idx+',\''+key+'\')">'+(sp.seedCost>0 ? sp.seedCost+' \u25C6' : 'Free')+'</button>'
+        + '</div>';
+    }).join('');
+    let invHtml = '';
+    if(state.inventory.length){
+      const invRows = state.inventory.map(stack=>{
+        return '<div class="seed-row">'
+          + '<div class="seed-row-glyph">'+renderSprite(stack.genome,'sm','bloom')+'</div>'
+          + '<div class="seed-row-info"><div class="seed-row-name">'+buildSpecimenName(stack.species, stack.genome)+'</div><div class="seed-row-sub">\u00D7'+stack.qty+' in stock</div></div>'
+          + '<button class="btn btn-small btn-accent" onclick="plantFromInventory('+idx+',\''+stack.id+'\')">Plant</button>'
+          + '</div>';
+      }).join('');
+      invHtml = '<div class="sheet-subhead">Your seed bank</div><div class="seed-list">'+invRows+'</div>';
+    }
+    html = '<div class="sheet-head"><h3>Place a seed</h3></div>'
+      + '<div class="pot-wrap-lg">'+renderPot('lg', false)+'</div>'
+      + '<div class="seed-list">'+baseRows+'</div>'+invHtml;
+
+  } else if(ds==='growing'){
+    const remaining = (plot.plantedAt+plot.growthDurationMs) - Date.now();
+    const pct = clamp(((Date.now()-plot.plantedAt)/plot.growthDurationMs)*100, 0, 100);
+    const chance = Math.round(computeMutationChance(plot, idx)*100);
+    const stress = computeStress(plot);
+    const sprinklerLevel = (state.upgrades && state.upgrades.sprinkler) || 0;
+    const gardenLightLevel = (state.upgrades && state.upgrades.gardenLight) || 0;
+    const waterAutoTag = sprinklerLevel>0 ? ' <span style="color:var(--accent);font-size:11px;">(auto)</span>' : '';
+    const lightAutoTag = gardenLightLevel>0 ? ' <span style="color:var(--accent);font-size:11px;">(auto)</span>' : '';
+    const spName = SPECIES[plot.genome.species].name;
+    let autoText = '';
+    if(sprinklerLevel>0 && gardenLightLevel>0) autoText = ' Your Sprinkler System and Garden Light are nudging water and light back toward their ideal on their own.';
+    else if(sprinklerLevel>0) autoText = ' Your Sprinkler System is nudging water back toward its ideal on its own \u2014 light is still on you.';
+    else if(gardenLightLevel>0) autoText = ' Your Garden Light is nudging light back toward its ideal on its own \u2014 water is still on you.';
+    html = '<div class="sheet-head"><h3>'+spName+'</h3></div>'
+      + '<div class="sprite-wrap-lg">'+renderSprite(plot.genome,'lg',computeStage(pct),{neighborHue:neighborHueFor(idx)})+'</div>'
+      + sheetAccessoryRow('<div class="pot-wrap-lg">'+renderPot('lg', false)+'</div>', sprinklerLevel>0)
+      + pestAlertHtml(idx)
+      + '<div class="sheet-timer" id="sheetTimer">'+fmtTime(remaining)+'</div>'
+      + '<div class="slider-row"><label>Light'+lightAutoTag+' <span style="color:var(--text-muted);">(wants ~'+stress.lightTarget+'%)</span></label><input id="lightSlider" type="range" min="0" max="100" value="'+plot.light+'" style="background:'+sliderGradient(stress.lightTarget)+'" oninput="onSlider('+idx+',\'light\',this.value)"></div>'
+      + '<div class="slider-row"><label>Water'+waterAutoTag+' <span style="color:var(--text-muted);">(wants ~'+stress.waterTarget+'%)</span></label><input id="waterSlider" type="range" min="0" max="100" value="'+plot.water+'" style="background:'+sliderGradient(stress.waterTarget)+'" oninput="onSlider('+idx+',\'water\',this.value)"></div>'
+      + '<div class="mutation-line">Mutation chance: <span id="sheetChance">'+chance+'%</span>'+(state.nextMutationBoost?' <span style="color:var(--violet);font-size:12px;">(boosted!)</span>':'')+'</div>'
+      + '<div id="sheetWarning" class="stress-warning'+(stress.maxStress>30?' show':'')+'">[!] Pushed this hard, it might not survive.</div>'
+      + '<button class="hint-toggle" onclick="this.nextElementSibling.classList.toggle(\'show\')">[?] How mutations work</button>'
+      + '<p class="hint">'+spName+' is happiest around light '+stress.lightTarget+'% and water '+stress.waterTarget+'% \u2014 every family wants something different, and getting both right earns a yield bonus at harvest. Stray far from its ideal and mutation odds rise \u2014 and so does the risk of losing the plant. A different species growing in a neighboring pot raises the odds of a cross.'+autoText+'</p>';
+
+  } else if(ds==='ready'){
+    const sprinklerLevel = (state.upgrades && state.upgrades.sprinkler) || 0;
+    html = '<div class="sheet-head"><h3>Ready to harvest</h3></div>'
+      + '<div class="sprite-wrap-lg">'+renderSprite(plot.genome,'lg','bloom',{neighborHue:neighborHueFor(idx)})+'</div>'
+      + sheetAccessoryRow('<div class="pot-wrap-lg">'+renderPot('lg', false)+'</div>', sprinklerLevel>0)
+      + pestAlertHtml(idx)
+      + '<button class="btn btn-primary btn-block" onclick="doHarvest('+idx+')">Harvest</button>';
+
+  } else if(ds==='wilted'){
+    const line = WILT_LINES[Math.floor(Math.random()*WILT_LINES.length)];
+    html = '<div class="sheet-head"><h3>Didn\'t make it</h3></div>'
+      + '<div class="sprite-wrap-lg">'+renderSprite(plot.genome,'lg','bloom',{wilt:true})+'</div>'
+      + '<div class="pot-wrap-lg">'+renderPot('lg', false)+'</div>'
+      + '<p class="sheet-blurb">'+line+'</p>'
+      + '<button class="btn btn-block" onclick="clearWilted('+idx+')">Clear pot (+1 \u25C6)</button>';
+  }
+  body.innerHTML = html;
+}
+function updateSheetLiveBits(idx){
+  const plot = state.plots[idx];
+  const remaining = (plot.plantedAt+plot.growthDurationMs) - Date.now();
+  const timerEl = document.getElementById('sheetTimer'); if(timerEl) timerEl.textContent = fmtTime(remaining);
+  const chanceEl = document.getElementById('sheetChance'); if(chanceEl) chanceEl.textContent = Math.round(computeMutationChance(plot, idx)*100)+'%';
+  const warnEl = document.getElementById('sheetWarning');
+  if(warnEl){ const stress = computeStress(plot); warnEl.classList.toggle('show', stress.maxStress>30); }
+  const lightEl = document.getElementById('lightSlider'); if(lightEl && document.activeElement!==lightEl) lightEl.value = plot.light;
+  const waterEl = document.getElementById('waterSlider'); if(waterEl && document.activeElement!==waterEl) waterEl.value = plot.water;
+}
+function renderReveal(result){
+  const body = document.getElementById('sheetBody');
+  const sparkles = result.isNew ? [0,1,2,3,4,5].map(i=>{
+    const top = [-8,10,40,70,95,30][i], left=[20,90,-6,98,40,75][i], delay=(i*70)+'ms', color=[ 'var(--warn)','var(--accent)','var(--violet)','var(--warn)','var(--accent)','var(--violet)'][i];
+    return '<div class="sparkle" style="top:'+top+'%;left:'+left+'%;background:'+color+';animation-delay:'+delay+'"></div>';
+  }).join('') : '';
+  body.innerHTML = '<div class="reveal-card">'
+    + sparkles
+    + (result.isNew ? '<div class="reveal-badge">NEW</div>' : '')
+    + '<div class="sprite-wrap-lg">'+renderSprite(result.genome,'lg','bloom')+'</div>'
+    + '<div class="reveal-name">'+result.name+'</div>'
+    + (result.crossInfo ? '<div class="reveal-cross">Cross-pollinated with '+result.crossInfo+'</div>' : '')
+    + (result.pestPenalty>0 ? '<div class="reveal-pest">Pests took a bite: \u2212'+Math.round(result.pestPenalty*100)+'% yield</div>' : '')
+    + (result.precisionBonus>0 ? '<div class="reveal-precision">Well-tended: +'+Math.round(result.precisionBonus*100)+'% yield</div>' : '')
+    + '<div class="reveal-rewards">+'+result.sellValue+' \u25C6 &nbsp; +'+result.seedQty+' seed'+(result.seedQty>1?'s':'')+'</div>'
+    + '</div>'
+    + '<button class="btn btn-primary btn-block" onclick="closeSheet()">Done</button>';
+}
+
+/* ===================== UI ACTIONS ===================== */
+function onSlider(idx, key, val){
+  state.plots[idx][key] = Number(val);
+  updateSheetLiveBits(idx);
+  scheduleSave();
+}
+function plantBase(idx, key){
+  plantSeed(idx, {type:'base', speciesKey:key});
+  renderSheetFull(idx); updateAllTiles(); updateHeader();
+}
+function plantFromInventory(idx, stackId){
+  plantSeed(idx, {type:'inventory', stackId});
+  renderSheetFull(idx); updateAllTiles(); updateHeader();
+}
+function unlockPlot(idx){
+  const plot = state.plots[idx];
+  if(state.spores < plot.unlockCost) return;
+  state.spores -= plot.unlockCost;
+  plot.locked = false;
+  bumpTaskProgress('unlock_plot', 1);
+  saveState();
+  renderSheetFull(idx); updateAllTiles(); updateHeader();
+}
+function doHarvest(idx){
+  const result = harvestPlot(idx);
+  if(!result) return;
+  revealShowing = true;
+  renderReveal(result);
+  updateAllTiles(); updateHeader(); renderHerbarium();
+}
+function clearWilted(idx){
+  const plot = state.plots[idx];
+  plot.status='empty'; plot.genome=null; plot.plantedAt=0; plot.growthDurationMs=0; plot.light=50; plot.water=50; plot.lastDeathCheck=0;
+  plot.pest=null; plot.lastPestCheck=0; plot.lastSprinklerCheck=0; plot.lastLightCheck=0;
+  state.spores += 1;
+  saveState();
+  renderSheetFull(idx); updateAllTiles(); updateHeader();
+}
+function showScreen(name){
+  document.getElementById('screen-greenhouse').classList.toggle('active', name==='greenhouse');
+  document.getElementById('screen-tasks').classList.toggle('active', name==='tasks');
+  document.getElementById('screen-upgrades').classList.toggle('active', name==='upgrades');
+  document.getElementById('screen-herbarium').classList.toggle('active', name==='herbarium');
+  document.querySelectorAll('.nav-btn').forEach(b=> b.classList.toggle('active', b.dataset.screen===name));
+  if(name==='herbarium') renderHerbarium();
+  if(name==='upgrades') renderUpgrades();
+  if(name==='tasks') renderTasks();
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 6000);
+}
+function buildAwayMessage(wilted, ready){
+  const parts = [];
+  if(ready>0) parts.push(ready+' ready to harvest');
+  if(wilted>0) parts.push(wilted+' wilted');
+  return 'While you were away: '+parts.join(', ')+'.';
+}
+
+/* ===================== TICK ===================== */
+function tick(){
+  const now = Date.now();
+  state.plots.forEach(p=>{ if(p.status==='growing'){ applyDeathRisk(p, now); applyPestRisk(p, now); applySprinkler(p, now); applyGardenLight(p, now); } });
+  updateAllTiles();
+  updateHeader();
+  applyWindowPhase();
+  if(document.getElementById('screen-tasks').classList.contains('active')){
+    const refreshed = ensureTaskBoardCurrent();
+    if(refreshed){ renderTasks(); showToast('The task board refreshed with new tasks!'); }
+    else renderTasks();
+  }
+  if(currentSheetIdx!=null && !revealShowing){
+    const p = state.plots[currentSheetIdx];
+    const ds = getDisplayStatus(p);
+    if(ds!==lastSheetDisplayStatus) renderSheetFull(currentSheetIdx);
+    else if(ds==='growing') updateSheetLiveBits(currentSheetIdx);
+  }
+  scheduleSave();
+}
+
+/* ===================== INIT ===================== */
+async function init(){
+  state = await loadState();
+  ensureTaskBoardCurrent();
+  const now = Date.now();
+  const away = state.lastSavedAt ? now-state.lastSavedAt : 0;
+  let wiltedCount = 0, readyCount = 0;
+  state.plots.forEach(p=>{
+    if(p.status==='growing'){
+      const before = p.status;
+      applyDeathRisk(p, now);
+      applyPestRisk(p, now);
+      applySprinkler(p, now);
+      applyGardenLight(p, now);
+      if(p.status==='wilted' && before!=='wilted') wiltedCount++;
+      else if(getDisplayStatus(p)==='ready') readyCount++;
+    }
+  });
+  buildPlotTiles();
+  updateAllTiles();
+  updateHeader();
+  renderHerbarium();
+  renderUpgrades();
+  applyWindowPhase();
+  if(!state.everPlanted) document.body.classList.add('show-hint');
+  if(away>30000 && (wiltedCount>0 || readyCount>0)) showToast(buildAwayMessage(wiltedCount, readyCount));
+  saveState();
+  setInterval(tick, 1000);
+}
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
